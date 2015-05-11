@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-void *mem_init(int size);
+void *mem_init(void);
 void *mem_sbrk(int incr);
 
 

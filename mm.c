@@ -14,7 +14,7 @@
 /*
  * If NEXT_FIT defined use next fit search, else use first fit search 
  */
-#define NEXT_FITx
+#define NEXT_FIT
 
 /* $begin mallocmacros */
 /* Basic constants and macros */
@@ -59,15 +59,127 @@ static void printblock(void *bp);
 static void checkheap(int verbose);
 static void checkblock(void *bp);
 
+/* Our internal helper functions */
+int evaluate(char *cmdline);
+int getCommandType(char *cmd);
+int parseline(char *buf, char **argv);
+
+/* defined Constants */
+#define MAXLINE 128
+#define MAXARGS 10
+
+
+int main(int argc, char *argv[])
+{
+    int program_is_running = 1;
+    char cmdline[MAXLINE];
+
+    /* first thing we need to do is to initialize the memory heap */
+    mm_init();
+
+    while (program_is_running) {
+        printf("> ");
+        fgets(cmdline, MAXLINE, stdin);
+
+        if (feof(stdin)) {
+            exit(0);
+        }
+        /* Evaluate */
+        program_is_running = evaluate(cmdline);
+    }
+    return 0;
+}
+
+int evaluate(char *cmdline) {
+    char *argv[MAXARGS]; /* Argument list execve() */
+    char buf[MAXLINE];   /* Holds modified command line */
+
+    /* READ THIS NOTE
+     * After parsline has completed your command will resid in 
+     * argv[0] and your arguments in the following elements.  
+     * parseline() will return the number of arguments passed in by
+     * the user, use it as you please and remember that *argv[] ends
+     * with a NULL.  I leave each function to verify it's args are correct
+     */
+    strcpy(buf, cmdline);
+    int argc = parseline(buf, argv);
+
+    // now determine what command we will use
+    int type = getCommandType(argv[0]);
+    // how call the function that is needed
+    switch (type) {
+        /* Here is an example on how you can use this switch statement
+         * printheap(argc, argv);
+         */
+        case ALLOCATE:      // call your function here
+                            break;
+        case FREE:          // call your function here
+                            break;
+        case BLOCKLIST:     // call your function here
+                            break;
+        case WRITEHEAP:     // call your function here
+                            break;
+        case QUIT:          return 0; // end the program
+                            break;
+        default:            // This means invalid command
+                            puts("invalid command entered");
+                            break; 
+    }
+    return 1;
+}
+
+int getCommandType(char *cmd) {
+    if (!strcmp(cmd, "allocate")) {
+        return ALLOCATE;
+    } else if (!strcmp(cmd, "free")) {
+       return FREE;
+    } else if (!strcmp(cmd, "blocklist")) {
+        return BLOCKLIST;
+    } else if (!strcmp(cmd, "writeheap")) {
+        return WRITEHEAP;
+    } else if (!strcmp(cmd, "printheap")) {
+        return PRINTHEAP;
+    } else if (!strcmp(cmd, "quit")) {
+        return QUIT;
+    } else {
+        return -1;
+    }
+}
+
+int parseline(char *buf, char **argv)
+{
+    char *delim;         /* Points to first space delimiter */
+    int argc;            /* Number of args */
+    
+    buf[strlen(buf)-1] = ' ';  /* Replace trailing '\n' with space */
+    while (*buf && (*buf == ' ')) /* Ignore leading spaces */
+        buf++;
+    
+    /* Build the argv list */
+    argc = 0;
+    while ((delim = strchr(buf, ' '))) {
+        argv[argc++] = buf;
+        *delim = '\0';
+        buf = delim + 1;
+        while (*buf && (*buf == ' ')) /* Ignore spaces */
+            buf++;
+    }
+    argv[argc] = NULL;
+    return argc;
+}
+
+
 /* 
  * mm_init - Initialize the memory manager 
  */
 /* $begin mminit */
 int mm_init(void) 
 {
+    mem_init();
     /* Create the initial empty heap */
     if ((heap_listp = mem_sbrk(4*WSIZE)) == (void *)-1) //line:vm:mm:begininit
-	return -1;
+	    return -1;
+
     PUT(heap_listp, 0);                          /* Alignment padding */
     PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); /* Prologue header */ 
     PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1)); /* Prologue footer */ 
@@ -99,29 +211,30 @@ void *mm_malloc(size_t size)
 
 /* $end mmmalloc */
     if (heap_listp == 0){
-	mm_init();
+	    mm_init();
     }
 /* $begin mmmalloc */
     /* Ignore spurious requests */
     if (size == 0)
-	return NULL;
+	    return NULL;
 
     /* Adjust block size to include overhead and alignment reqs. */
     if (size <= DSIZE)                                          //line:vm:mm:sizeadjust1
-	asize = 2*DSIZE;                                        //line:vm:mm:sizeadjust2
+	    asize = 2*DSIZE;                                        //line:vm:mm:sizeadjust2
     else
-	asize = DSIZE * ((size + (DSIZE) + (DSIZE-1)) / DSIZE); //line:vm:mm:sizeadjust3
+	    asize = DSIZE * ((size + (DSIZE) + (DSIZE-1)) / DSIZE); //line:vm:mm:sizeadjust3
 
     /* Search the free list for a fit */
     if ((bp = find_fit(asize)) != NULL) {  //line:vm:mm:findfitcall
-	place(bp, asize);                  //line:vm:mm:findfitplace
-	return bp;
+    	place(bp, asize);                  //line:vm:mm:findfitplace
+    	return bp;
     }
 
     /* No fit found. Get more memory and place the block */
     extendsize = MAX(asize,CHUNKSIZE);                 //line:vm:mm:growheap1
     if ((bp = extend_heap(extendsize/WSIZE)) == NULL)  
-	return NULL;                                  //line:vm:mm:growheap2
+	    return NULL;                                  //line:vm:mm:growheap2
+
     place(bp, asize);                                 //line:vm:mm:growheap3
     return bp;
 } 
@@ -135,13 +248,13 @@ void mm_free(void *bp)
 {
 /* $end mmfree */
     if(bp == 0) 
-	return;
+        return;
 
 /* $begin mmfree */
     size_t size = GET_SIZE(HDRP(bp));
 /* $end mmfree */
     if (heap_listp == 0){
-	mm_init();
+	    mm_init();
     }
 /* $begin mmfree */
 
@@ -162,28 +275,22 @@ static void *coalesce(void *bp)
     size_t size = GET_SIZE(HDRP(bp));
 
     if (prev_alloc && next_alloc) {            /* Case 1 */
-	return bp;
-    }
-
-    else if (prev_alloc && !next_alloc) {      /* Case 2 */
-	size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
-	PUT(HDRP(bp), PACK(size, 0));
-	PUT(FTRP(bp), PACK(size,0));
-    }
-
-    else if (!prev_alloc && next_alloc) {      /* Case 3 */
-	size += GET_SIZE(HDRP(PREV_BLKP(bp)));
-	PUT(FTRP(bp), PACK(size, 0));
-	PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
-	bp = PREV_BLKP(bp);
-    }
-
-    else {                                     /* Case 4 */
-	size += GET_SIZE(HDRP(PREV_BLKP(bp))) + 
-	    GET_SIZE(FTRP(NEXT_BLKP(bp)));
-	PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
-	PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0));
-	bp = PREV_BLKP(bp);
+	    return bp;
+    } else if (prev_alloc && !next_alloc) {      /* Case 2 */
+    	size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
+	    PUT(HDRP(bp), PACK(size, 0));
+	    PUT(FTRP(bp), PACK(size,0));
+    } else if (!prev_alloc && next_alloc) {      /* Case 3 */
+        size += GET_SIZE(HDRP(PREV_BLKP(bp)));
+        PUT(FTRP(bp), PACK(size, 0));
+        PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
+        bp = PREV_BLKP(bp);
+    } else {                                     /* Case 4 */
+        size += GET_SIZE(HDRP(PREV_BLKP(bp))) + 
+            GET_SIZE(FTRP(NEXT_BLKP(bp)));
+        PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
+        PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0));
+        bp = PREV_BLKP(bp);
     }
 /* $end mmfree */
 #ifdef NEXT_FIT
@@ -207,26 +314,26 @@ void *mm_realloc(void *ptr, size_t size)
 
     /* If size == 0 then this is just free, and we return NULL. */
     if(size == 0) {
-	mm_free(ptr);
-	return 0;
+        mm_free(ptr);
+        return 0;
     }
 
     /* If oldptr is NULL, then this is just malloc. */
     if(ptr == NULL) {
-	return mm_malloc(size);
+        return mm_malloc(size);
     }
 
     newptr = mm_malloc(size);
 
     /* If realloc() fails the original block is left untouched  */
     if(!newptr) {
-	return 0;
+        return 0;
     }
 
     /* Copy the old data. */
     oldsize = GET_SIZE(HDRP(ptr));
     if(size < oldsize) oldsize = size;
-    memcpy(newptr, ptr, oldsize);
+        memcpy(newptr, ptr, oldsize);
 
     /* Free the old block. */
     mm_free(ptr);
@@ -257,7 +364,7 @@ static void *extend_heap(size_t words)
     /* Allocate an even number of words to maintain alignment */
     size = (words % 2) ? (words+1) * WSIZE : words * WSIZE; //line:vm:mm:beginextend
     if ((long)(bp = mem_sbrk(size)) == -1)  
-	return NULL;                                        //line:vm:mm:endextend
+        return NULL;                                        //line:vm:mm:endextend
 
     /* Initialize free block header/footer and the epilogue header */
     PUT(HDRP(bp), PACK(size, 0));         /* Free block header */   //line:vm:mm:freeblockhdr
@@ -281,15 +388,14 @@ static void place(void *bp, size_t asize)
     size_t csize = GET_SIZE(HDRP(bp));   
 
     if ((csize - asize) >= (2*DSIZE)) { 
-	PUT(HDRP(bp), PACK(asize, 1));
-	PUT(FTRP(bp), PACK(asize, 1));
-	bp = NEXT_BLKP(bp);
-	PUT(HDRP(bp), PACK(csize-asize, 0));
-	PUT(FTRP(bp), PACK(csize-asize, 0));
-    }
-    else { 
-	PUT(HDRP(bp), PACK(csize, 1));
-	PUT(FTRP(bp), PACK(csize, 1));
+        PUT(HDRP(bp), PACK(asize, 1));
+        PUT(FTRP(bp), PACK(asize, 1));
+        bp = NEXT_BLKP(bp);
+        PUT(HDRP(bp), PACK(csize-asize, 0));
+        PUT(FTRP(bp), PACK(csize-asize, 0));
+    } else { 
+        PUT(HDRP(bp), PACK(csize, 1));
+        PUT(FTRP(bp), PACK(csize, 1));
     }
 }
 /* $end mmplace */
@@ -310,13 +416,13 @@ static void *find_fit(size_t asize)
 
     /* Search from the rover to the end of list */
     for ( ; GET_SIZE(HDRP(rover)) > 0; rover = NEXT_BLKP(rover))
-	if (!GET_ALLOC(HDRP(rover)) && (asize <= GET_SIZE(HDRP(rover))))
-	    return rover;
+        if (!GET_ALLOC(HDRP(rover)) && (asize <= GET_SIZE(HDRP(rover))))
+            return rover;
 
     /* search from start of list to old rover */
     for (rover = heap_listp; rover < oldrover; rover = NEXT_BLKP(rover))
-	if (!GET_ALLOC(HDRP(rover)) && (asize <= GET_SIZE(HDRP(rover))))
-	    return rover;
+        if (!GET_ALLOC(HDRP(rover)) && (asize <= GET_SIZE(HDRP(rover))))
+            return rover;
 
     return NULL;  /* no fit found */
 #else 
@@ -325,9 +431,9 @@ static void *find_fit(size_t asize)
     void *bp;
 
     for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
-	if (!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))) {
-	    return bp;
-	}
+        if (!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))) {
+            return bp;
+        }
     }
     return NULL; /* No fit */
 /* $end mmfirstfit */
@@ -345,8 +451,8 @@ static void printblock(void *bp)
     falloc = GET_ALLOC(FTRP(bp));  
 
     if (hsize == 0) {
-	printf("%p: EOL\n", bp);
-	return;
+        printf("%p: EOL\n", bp);
+        return;
     }
 
     /*  printf("%p: header: [%p:%c] footer: [%p:%c]\n", bp, 
@@ -357,9 +463,9 @@ static void printblock(void *bp)
 static void checkblock(void *bp) 
 {
     if ((size_t)bp % 8)
-	printf("Error: %p is not doubleword aligned\n", bp);
+        printf("Error: %p is not doubleword aligned\n", bp);
     if (GET(HDRP(bp)) != GET(FTRP(bp)))
-	printf("Error: header does not match footer\n");
+        printf("Error: header does not match footer\n");
 }
 
 /* 
@@ -370,20 +476,22 @@ void checkheap(int verbose)
     char *bp = heap_listp;
 
     if (verbose)
-	printf("Heap (%p):\n", heap_listp);
+        printf("Heap (%p):\n", heap_listp);
 
     if ((GET_SIZE(HDRP(heap_listp)) != DSIZE) || !GET_ALLOC(HDRP(heap_listp)))
-	printf("Bad prologue header\n");
+	    printf("Bad prologue header\n");
+
     checkblock(heap_listp);
 
     for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
-	if (verbose) 
-	    printblock(bp);
-	checkblock(bp);
+        if (verbose) 
+            printblock(bp);
+
+        checkblock(bp);
     }
 
     if (verbose)
-	printblock(bp);
+        printblock(bp);
     if ((GET_SIZE(HDRP(bp)) != 0) || !(GET_ALLOC(HDRP(bp))))
-	printf("Bad epilogue header\n");
+        printf("Bad epilogue header\n");
 }

@@ -22,4 +22,16 @@ typedef struct {
 
 extern team_t team;
 
+/* Our internal helper functions */
+int evaluate(char *cmdline);
+int getCommandType(char *cmd);
+int parseline(char *buf, char **argv);
+
+/* enum for evaluating a command given at the prompt */
+enum commands { ALLOCATE = 0
+                , FREE = 1
+                , BLOCKLIST = 2
+                , WRITEHEAP = 3
+                , PRINTHEAP = 4
+                , QUIT = 5 };
 #endif
