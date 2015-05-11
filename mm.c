@@ -59,11 +59,6 @@ static void printblock(void *bp);
 static void checkheap(int verbose);
 static void checkblock(void *bp);
 
-/* Our internal helper functions */
-int evaluate(char *cmdline);
-int getCommandType(char *cmd);
-int parseline(char *buf, char **argv);
-
 /* defined Constants */
 #define MAXLINE 128
 #define MAXARGS 10
@@ -118,6 +113,8 @@ int evaluate(char *cmdline) {
         case BLOCKLIST:     // call your function here
                             break;
         case WRITEHEAP:     // call your function here
+                            break;
+        case PRINTHEAP:     // call your function here
                             break;
         case QUIT:          return 0; // end the program
                             break;
