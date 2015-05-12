@@ -58,6 +58,9 @@ static void *coalesce(void *bp);
 static void printblock(void *bp); 
 static void checkheap(int verbose);
 static void checkblock(void *bp);
+//A:added two fx defs
+int allocate (size_t size);
+void free_block(int block_num);
 
 /* defined Constants */
 #define MAXLINE 128
@@ -98,6 +101,8 @@ int evaluate(char *cmdline) {
      */
     strcpy(buf, cmdline);
     int argc = parseline(buf, argv);
+    unsigned int amount;
+    int block_num;
 
     // now determine what command we will use
     int type = getCommandType(argv[0]);
@@ -107,8 +112,12 @@ int evaluate(char *cmdline) {
          * printheap(argc, argv);
          */
         case ALLOCATE:      // call your function here
+                            if(sscanf(argv[1], "%u", &amount) != 1) {printf("what did you put in that cmd line? not an int!\n");}
+                            printf("%i\n", allocate(amount));
                             break;
         case FREE:          // call your function here
+                            if(sscanf(argv[1], "%i", &block_num) != 1) {printf("what did you put in that cmd line? not an int!\n");}
+                            free_block(block_num);
                             break;
         case BLOCKLIST:     // call your function here
                             break;
@@ -163,6 +172,32 @@ int parseline(char *buf, char **argv)
     }
     argv[argc] = NULL;
     return argc;
+}
+
+
+/*Lab 03 Functions*/
+//A: allocate fx "wrapper"
+int allocate (size_t size) {
+	printf("Hello we are in allocate!\n");
+	char * p = mm_malloc(size);
+	if(p != NULL){
+	printf("%p\n", p);
+	//right now i am just returning 1 but it should return COUNTER value
+	return 1; // return insert_node(COUNTER, p); -> that fx must return COUNTER val (and that fx if insert is successful increments COUNTER
+	}
+	else {
+	printf("We have null pointer on our hands, run for cover\n");
+	return 0;
+	}
+
+}
+//A: free "wrapper"
+void free_block(int block_num){
+	printf("Hello from free fx\n");
+	//here we get that pointer from our LL via void *get_addy(int block_num) fx or something
+	//mm_free(get_addy(int block_num));
+	//here we call the remove_node(int block_num) -> it must remove the node with that block number
+	//we don't do anything with the COUNTER here (only when we insert node)
 }
 
 
